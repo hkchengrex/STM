@@ -48,13 +48,13 @@ if __name__ == '__main__':
 
         split_path = path.join(in_path, split)
 
-        out_path = path.join(split_path, 'JPEGImages_480p')
+        out_path = path.join(split_path+'_480p', 'JPEGImages')
         os.makedirs(out_path, exist_ok=True)
         hr_path = path.join(split_path, 'JPEGImages')
 
         anno_path = path.join(split_path, 'Annotations')
         if os.path.exists(anno_path):
-            ann_out_path = path.join(split_path, 'Annotations_480p')
+            ann_out_path = path.join(split_path+'_480p', 'Annotations')
             os.makedirs(ann_out_path, exist_ok=True)
             print('Annotations exist.')
             use_anno = True
