@@ -40,6 +40,7 @@ def get_arguments():
 
     parser.add_argument("--id", type=int, help='Id out of total ID for partitioning')
     parser.add_argument("--total_id", type=int, help='Total ID for partitioning')
+    parser.add_argument("--start_idx", type=int, help='Skip some index in the current partition')
 
     return parser.parse_args()
 
@@ -52,6 +53,7 @@ AF_ROOT = args.af_root
 
 id = args.id
 total_id = args.total_id
+start_idx = args.start_idx
 
 # Model and version
 MODEL = 'STM'
@@ -131,7 +133,7 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
 
 
 
-Testset = YOUTUBE_VOS_MO_Test(VOS_ROOT, AF_ROOT, id=id, total_id=total_id)
+Testset = YOUTUBE_VOS_MO_Test(VOS_ROOT, AF_ROOT, id=id, total_id=total_id, skip_idx=start_idx)
 Testloader = data.DataLoader(Testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)
 
 model = nn.DataParallel(STM())
