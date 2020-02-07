@@ -79,9 +79,11 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
     all_values = [None] * t
     for i in range(t):
         all_keys[i], all_values[i] = model(Fs[:,:,i], Ms[:,:,i], torch.tensor([num_objects]))
+        all_keys[i] = all_keys[i].cpu()
+        all_values[i] = all_values[i].cpu()
 
-    all_keys = torch.cat(all_keys, 3).cpu()
-    all_values = torch.cat(all_values, 3).cpu()
+    all_keys = torch.cat(all_keys, 3)
+    all_values = torch.cat(all_values, 3)
 
     Es = torch.zeros((b, k, at, w, h), dtype=torch.float32, device=Ms.device)
     Es[:,:,0] = Ms[:,:,0]
