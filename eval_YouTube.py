@@ -143,7 +143,7 @@ model.load_state_dict(torch.load(pth_path))
 
 code_name = 'YouTube_fromGT'
 
-for seq, V in progressbar(enumerate(Testloader)):
+for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
     Fs, Ms, AFs, info = V
     seq_name = info['name'][0]
     num_frames = info['num_frames'][0].item()
