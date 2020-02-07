@@ -38,9 +38,9 @@ def get_arguments():
     parser.add_argument("--vos_root", type=str, help="path to data", default='../YouTube/vos/train')
     parser.add_argument("--af_root", type=str, help="path to data", default='../YouTube/vos/all_frames/train')
 
-    parser.add_argument("--id", type=int, help='Id out of total ID for partitioning')
-    parser.add_argument("--total_id", type=int, help='Total ID for partitioning')
-    parser.add_argument("--start_idx", type=int, help='Skip some index in the current partition')
+    parser.add_argument("--id", type=int, help='Id out of total ID for partitioning', default=0)
+    parser.add_argument("--total_id", type=int, help='Total ID for partitioning', default=1)
+    parser.add_argument("--start_idx", type=int, help='Skip some index in the current partition', default=0)
 
     parser.add_argument("--before", type=int, help='Memory before')
     parser.add_argument("--after", type=int, help='Memory after')
