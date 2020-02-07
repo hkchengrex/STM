@@ -93,7 +93,9 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
     # for t_step in tqdm.tqdm(range(1, num_frames)):
     for t_step in range(1, at):
         # memorize
-        prev_key, prev_value = model(AFs[:,:,t_step-1], Es[:,:,t_step-1], torch.tensor([num_objects])).cpu()
+        prev_key, prev_value = model(AFs[:,:,t_step-1], Es[:,:,t_step-1], torch.tensor([num_objects]))
+        prev_key = prev_key.cpu()
+        prev_value = prev_value.cpu()
 
         # if t-1 == 0: # 
         #     this_keys, this_values = prev_key, prev_value # only prev memory
@@ -154,7 +156,12 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
     num_objects = info['num_objects'][0]
     
     with torch.no_grad():
-        pred, Es = Run_video(Fs, Ms, AFs, mem_before=3, mem_after=3, num_objects=num_objects)
+        try:
+            pred, Es = Run_video(Fs, Ms, AFs, mem_before=3, mem_after=3, num_objects=num_objects)
+        except RuntimeError as e:
+            print('Exception', e)
+            torch.cuda.empty_cache()
+            pred, Es = Run_video(Fs, Ms, AFs, mem_before=3, mem_after=3, num_objects=num_objects)
         
     # Save results for quantitative eval ######################
     test_path = os.path.join('./test', code_name, seq_name)
