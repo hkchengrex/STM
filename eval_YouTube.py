@@ -42,6 +42,9 @@ def get_arguments():
     parser.add_argument("--total_id", type=int, help='Total ID for partitioning')
     parser.add_argument("--start_idx", type=int, help='Skip some index in the current partition')
 
+    parser.add_argument("--before", type=int, help='Memory before')
+    parser.add_argument("--after", type=int, help='Memory after')
+
     return parser.parse_args()
 
 args = get_arguments()
@@ -54,6 +57,8 @@ AF_ROOT = args.af_root
 id = args.id
 total_id = args.total_id
 start_idx = args.start_idx
+before = args.before
+after = args.after
 
 # Model and version
 MODEL = 'STM'
@@ -157,11 +162,11 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
     
     with torch.no_grad():
         try:
-            pred, Es = Run_video(Fs, Ms, AFs, mem_before=3, mem_after=3, num_objects=num_objects)
+            pred, Es = Run_video(Fs, Ms, AFs, mem_before=before, mem_after=after, num_objects=num_objects)
         except RuntimeError as e:
             print('Exception', e)
             torch.cuda.empty_cache()
-            pred, Es = Run_video(Fs, Ms, AFs, mem_before=3, mem_after=3, num_objects=num_objects)
+            pred, Es = Run_video(Fs, Ms, AFs, mem_before=before, mem_after=after, num_objects=num_objects)
         
     # Save results for quantitative eval ######################
     test_path = os.path.join('./test', code_name, seq_name)
