@@ -33,7 +33,7 @@ torch.set_grad_enabled(False) # Volatile
 
 def get_arguments():
     parser = argparse.ArgumentParser(description="SST")
-    parser.add_argument("-g", type=str, help="0; 0,1; 0,3; etc", required=True)
+    # parser.add_argument("-g", type=str, help="0; 0,1; 0,3; etc", required=True)
     parser.add_argument("-viz", help="Save visualization", action="store_true")
     parser.add_argument("--vos_root", type=str, help="path to data", default='../YouTube/vos/train')
     parser.add_argument("--af_root", type=str, help="path to data", default='../YouTube/vos/all_frames/train')
@@ -45,7 +45,7 @@ def get_arguments():
 
 args = get_arguments()
 
-GPU = args.g
+# GPU = args.g
 VIZ = args.viz
 VOS_ROOT = args.vos_root
 AF_ROOT = args.af_root
@@ -57,7 +57,7 @@ total_id = args.total_id
 MODEL = 'STM'
 print(MODEL, ': Testing on YouTube')
 
-os.environ['CUDA_VISIBLE_DEVICES'] = GPU
+# os.environ['CUDA_VISIBLE_DEVICES'] = GPU
 if torch.cuda.is_available():
     print('using Cuda devices, num:', torch.cuda.device_count())
 
