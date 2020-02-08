@@ -164,7 +164,7 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
         try:
             pred, Es = Run_video(Fs, Ms, AFs, mem_before=before, mem_after=after, num_objects=num_objects)
         except RuntimeError as e:
-            print('Exception', e)
+            print('Exception', e, seq_name)
             torch.cuda.empty_cache()
             pred, Es = Run_video(Fs, Ms, AFs, mem_before=before, mem_after=after, num_objects=num_objects)
         
