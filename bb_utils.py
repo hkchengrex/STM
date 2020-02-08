@@ -29,3 +29,25 @@ def scale_bb_by(rmin, rmax, cmin, cmax, im_height, im_width, h_scale, w_scale):
     cmax = max(cmin, cmax)
 
     return rmin, rmax, cmin, cmax 
+
+def fit_bb_to_stride(rmin, rmax, cmin, cmax, im_height, im_width, stride):
+
+    # For rounding
+    rmax += stride//2
+    cmax += stride//2
+
+    rmin = rmin//stride*stride
+    cmin = cmin//stride*stride
+    rmax = rmax//stride*stride
+    cmax = cmax//stride*stride
+
+    rmin = int(max(0, rmin))
+    rmax = int(min(im_height-1, rmax))
+    cmin = int(max(0, cmin))
+    cmax = int(min(im_width-1, cmax))
+
+    # Prevent negative width/height
+    rmax = max(rmin, rmax)
+    cmax = max(cmin, cmax)
+
+    return rmin, rmax, cmin, cmax 

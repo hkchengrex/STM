@@ -152,7 +152,7 @@ class Memory(nn.Module):
         B, D_e, T, H, W = m_in.size()
         _, D_o, _, _, _ = m_out.size()
 
-        print('In out', m_in.shape, m_out.shape)
+        # print('In out', q_in.shape, q_out.shape)
 
         mi = m_in.view(B, D_e, T*H*W) 
         mi = torch.transpose(mi, 1, 2)  # b, THW, emb
@@ -262,13 +262,15 @@ class STM(nn.Module):
         
         # logit = self.Soft_aggregation(ps, K) # 1, K, H, W
 
+        # print(ps.shape)
+
         if pad[2]+pad[3] > 0:
-            ps = ps[:,:,pad[2]:-pad[3],:]
+            ps = ps[:,pad[2]:-pad[3],:]
         if pad[0]+pad[1] > 0:
-            ps = ps[:,:,:,pad[0]:-pad[1]]
+            ps = ps[:,:,pad[0]:-pad[1]]
 
         # return logit 
-        return ps[:, 0]
+        return ps
 
     def forward(self, *args, **kwargs):
         if args[1].dim() > 4: # keys

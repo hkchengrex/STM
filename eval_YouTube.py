@@ -80,8 +80,8 @@ palette = Image.open(path.join(VOS_ROOT, 'Annotations/0a2f2bd294/00000.png')).ge
 def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
 
     # print(Fs.shape, Ms.shape, AFs.shape)
-    b, _, t, w, h = Fs.shape
-    _, _, at, w, h = AFs.shape
+    b, _, t, h, w = Fs.shape
+    _, _, at, h, w = AFs.shape
     _, k, _, _, _ = Ms.shape
 
     all_keys = [None] * t
@@ -94,21 +94,22 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
     all_keys = torch.cat(all_keys, 3)
     all_values = torch.cat(all_values, 3)
 
-    Es = torch.zeros((b, k, at, w, h), dtype=torch.float32, device=Ms.device)
+    Es = torch.zeros((b, k, at, h, w), dtype=torch.float32, device=Ms.device)
     Es[:,:,0] = Ms[:,:,0]
 
     # for t_step in tqdm.tqdm(range(1, num_frames)):
     for t_step in range(1, at):
         # memorize
         prev_key, prev_value = model(AFs[:,:,t_step-1], Es[:,:,t_step-1], num_objects=torch.tensor([num_objects]))
-        class_prob = torch.zeros((b, k, w, h), dtype=torch.float32)
+        class_prob = torch.zeros((k-1, h, w), dtype=torch.float32)
+
         for obj_idx in range(1, num_objects+1):
 
             inter_idx = max(0, min(t-1, t_step//5))
             start_idx = max(0, inter_idx - mem_before)
             end_idx = min(t, inter_idx + mem_after + 1)
 
-            print(t_step, inter_idx, start_idx, end_idx)
+            # print(t_step, inter_idx, start_idx, end_idx)
 
             last_mask = Ms[:,obj_idx,inter_idx]
             if inter_idx != t-1:
@@ -119,33 +120,39 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
                 # No future GT frames, just go with this
                 combined_mask = last_mask
                 scale = 0.25
-            coords = get_bb_position(combined_mask.numpy()[0])
-            rmin, rmax, cmin, cmax = scale_bb_by(*coords, h, w, scale, scale)
+            try:
+                coords = get_bb_position(combined_mask.numpy()[0])
+                coords = scale_bb_by(*coords, h, w, scale, scale)
+                # print('pre', *coords)
+                rmin, rmax, cmin, cmax = fit_bb_to_stride(*coords, h, w, 16)
+            except:
+                # print('Cannot find BB')
+                # Cannot find BB --> Nothing to see here!
+                continue
 
-            print(all_keys.shape, all_values.shape)
+            # print(all_keys.shape, all_values.shape)
+            # print('afr', rmin, rmax, cmin, cmax)
 
-            be_keys = all_keys[:,obj_idx:obj_idx+1, :, start_idx:inter_idx+1, rmin//16:rmax//16, cmin//16:cmax//16]
-            be_values = all_values[:,obj_idx:obj_idx+1, :, start_idx:inter_idx+1, rmin//16:rmax//16, cmin//16:cmax//16]
+            be_keys = all_keys[:,obj_idx:obj_idx+1, :, start_idx:inter_idx+1, rmin//16:rmax//16+1, cmin//16:cmax//16+1]
+            be_values = all_values[:,obj_idx:obj_idx+1, :, start_idx:inter_idx+1, rmin//16:rmax//16+1, cmin//16:cmax//16+1]
 
-            af_keys = all_keys[:,obj_idx:obj_idx+1, :, inter_idx+1:end_idx, rmin//16:rmax//16, cmin//16:cmax//16]
-            af_values = all_values[:,obj_idx:obj_idx+1, :, inter_idx+1:end_idx, rmin//16:rmax//16, cmin//16:cmax//16]
+            af_keys = all_keys[:,obj_idx:obj_idx+1, :, inter_idx+1:end_idx, rmin//16:rmax//16+1, cmin//16:cmax//16+1]
+            af_values = all_values[:,obj_idx:obj_idx+1, :, inter_idx+1:end_idx, rmin//16:rmax//16+1, cmin//16:cmax//16+1]
 
             this_keys = torch.cat([be_keys, af_keys], 3).cuda()
             this_values = torch.cat([be_values, af_values], 3).cuda()
 
-            prev_key = prev_key[:,obj_idx : obj_idx+1,:,:, rmin//16:rmax//16, cmin//16:cmax//16]
-            prev_value = prev_value[:,obj_idx : obj_idx+1,:,:, rmin//16:rmax//16, cmin//16:cmax//16]
+            prev_key_obj = prev_key[:, obj_idx:obj_idx+1,:,:, rmin//16:rmax//16+1, cmin//16:cmax//16+1]
+            prev_value_obj = prev_value[:, obj_idx:obj_idx+1,:,:, rmin//16:rmax//16+1, cmin//16:cmax//16+1]
 
-            this_keys = torch.cat([this_keys, prev_key], 3)
-            this_values = torch.cat([this_values, prev_value], 3)
-            
-            print(this_keys.shape, this_values.shape, AFs.shape)
+            this_keys = torch.cat([this_keys, prev_key_obj], 3)
+            this_values = torch.cat([this_values, prev_value_obj], 3)
 
             # segment
-            ps = model(AFs[:,:,t_step,rmin:rmax,cmin:cmax], this_keys, this_values, num_objects=torch.tensor([1]), only_obj=True)
-            class_prob[:,obj_idx, rmin:rmax, cmin:cmax] = ps
+            ps = model(AFs[:,:,t_step,rmin:rmax+1,cmin:cmax+1], this_keys, this_values, num_objects=torch.tensor([1]), only_obj=True)
+            class_prob[obj_idx-1, rmin:rmax+1, cmin:cmax+1] = ps
             
-        logit = model.module.Soft_aggregation(ps, k)
+        logit = model.module.Soft_aggregation(class_prob, k)
         Es[:,:,t_step] = F.softmax(logit, dim=1).cpu()
         
     pred = np.argmax(Es[0].cpu().numpy(), axis=0).astype(np.uint8)
@@ -167,7 +174,7 @@ model.load_state_dict(torch.load(pth_path))
 
 code_name = 'YouTube_BB_b%d_a%d' % (before, after)
 
-for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
+for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redirect_stdout=True):
     Fs, Ms, AFs, info = V
     seq_name = info['name'][0]
     num_frames = info['num_frames'][0].item()
