@@ -98,9 +98,9 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
     # for t_step in tqdm.tqdm(range(1, num_frames)):
     for t_step in range(1, at):
         # memorize
-        prev_key, prev_value = model(AFs[:,:,t_step-1], Es[:,:,t_step-1], torch.tensor([num_objects]))
-        prev_key = prev_key.cpu()
-        prev_value = prev_value.cpu()
+        # prev_key, prev_value = model(AFs[:,:,t_step-1], Es[:,:,t_step-1], torch.tensor([num_objects]))
+        # prev_key = prev_key.cpu()
+        # prev_value = prev_value.cpu()
 
         # if t-1 == 0: # 
         #     this_keys, this_values = prev_key, prev_value # only prev memory
@@ -121,15 +121,15 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
         # print(start_idx, inter_idx, end_idx)
         # print(be_keys.shape, af_keys.shape, prev_key.shape)
 
-        this_keys = torch.cat([be_keys, af_keys, prev_key], 3).cuda()
-        this_values = torch.cat([be_values, af_values, prev_value], 3).cuda()
+        this_keys = torch.cat([be_keys, af_keys], 3).cuda()
+        this_values = torch.cat([be_values, af_values], 3).cuda()
 
         # this_keys = torch.cat([all_keys, prev_key], dim=3)
         # this_values = torch.cat([all_values, prev_value], dim=3)
         
         # segment
         logit = model(AFs[:,:,t_step], this_keys, this_values, torch.tensor([num_objects]))
-        Es[:,:,t_step] = F.softmax(logit, dim=1)
+        Es[:,:,t_step] = F.softmax(logit, dim=1).cpu()
         
         # # update
         # if t-1 in to_memorize:
