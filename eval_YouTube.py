@@ -28,6 +28,8 @@ from progressbar import progressbar
 from youtube_dataset import YOUTUBE_VOS_MO_Test
 from model import STM
 
+from bb_utils import *
+
 
 torch.set_grad_enabled(False) # Volatile
 
@@ -42,8 +44,8 @@ def get_arguments():
     parser.add_argument("--total_id", type=int, help='Total ID for partitioning', default=1)
     parser.add_argument("--start_idx", type=int, help='Skip some index in the current partition', default=0)
 
-    parser.add_argument("--before", type=int, help='Memory before')
-    parser.add_argument("--after", type=int, help='Memory after')
+    parser.add_argument("--before", type=int, help='Memory before', default=3)
+    parser.add_argument("--after", type=int, help='Memory after', default=3)
 
     return parser.parse_args()
 
@@ -85,7 +87,7 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
     all_keys = [None] * t
     all_values = [None] * t
     for i in range(t):
-        all_keys[i], all_values[i] = model(Fs[:,:,i], Ms[:,:,i], torch.tensor([num_objects]))
+        all_keys[i], all_values[i] = model(Fs[:,:,i], Ms[:,:,i], num_objects=torch.tensor([num_objects]))
         all_keys[i] = all_keys[i].cpu()
         all_values[i] = all_values[i].cpu()
 
@@ -98,42 +100,53 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
     # for t_step in tqdm.tqdm(range(1, num_frames)):
     for t_step in range(1, at):
         # memorize
-        prev_key, prev_value = model(AFs[:,:,t_step-1], Es[:,:,t_step-1], torch.tensor([num_objects]))
-        prev_key = prev_key.cpu()
-        prev_value = prev_value.cpu()
+        prev_key, prev_value = model(AFs[:,:,t_step-1], Es[:,:,t_step-1], num_objects=torch.tensor([num_objects]))
+        class_prob = torch.zeros((b, k, w, h), dtype=torch.float32)
+        for obj_idx in range(1, num_objects+1):
 
-        # if t-1 == 0: # 
-        #     this_keys, this_values = prev_key, prev_value # only prev memory
-        # else:
-        #     this_keys = torch.cat([keys, prev_key], dim=3)
-        #     this_values = torch.cat([values, prev_value], dim=3)
+            inter_idx = max(0, min(t-1, t_step//5))
+            start_idx = max(0, inter_idx - mem_before)
+            end_idx = min(t, inter_idx + mem_after + 1)
 
-        inter_idx = max(0, min(t-1, (t_step+4)//5))
-        start_idx = max(0, inter_idx - mem_before)
-        end_idx = min(t-1, inter_idx + mem_after + 1)
+            print(t_step, inter_idx, start_idx, end_idx)
 
-        be_keys = all_keys[:,:,:, start_idx : inter_idx]
-        be_values = all_values[:,:,:, start_idx : inter_idx]
+            last_mask = Ms[:,obj_idx,inter_idx]
+            if inter_idx != t-1:
+                next_mask = Ms[:,obj_idx,inter_idx+1]
+                combined_mask = last_mask + next_mask
+                scale = 0.1
+            else:
+                # No future GT frames, just go with this
+                combined_mask = last_mask
+                scale = 0.25
+            coords = get_bb_position(combined_mask.numpy()[0])
+            rmin, rmax, cmin, cmax = scale_bb_by(*coords, h, w, scale, scale)
 
-        af_keys = all_keys[:,:,:, inter_idx : end_idx]
-        af_values = all_values[:,:,:, inter_idx : end_idx]
+            print(all_keys.shape, all_values.shape)
 
-        # print(start_idx, inter_idx, end_idx)
-        # print(be_keys.shape, af_keys.shape, prev_key.shape)
+            be_keys = all_keys[:,obj_idx:obj_idx+1, :, start_idx:inter_idx+1, rmin//16:rmax//16, cmin//16:cmax//16]
+            be_values = all_values[:,obj_idx:obj_idx+1, :, start_idx:inter_idx+1, rmin//16:rmax//16, cmin//16:cmax//16]
 
-        this_keys = torch.cat([be_keys, af_keys, prev_key], 3).cuda()
-        this_values = torch.cat([be_values, af_values, prev_value], 3).cuda()
+            af_keys = all_keys[:,obj_idx:obj_idx+1, :, inter_idx+1:end_idx, rmin//16:rmax//16, cmin//16:cmax//16]
+            af_values = all_values[:,obj_idx:obj_idx+1, :, inter_idx+1:end_idx, rmin//16:rmax//16, cmin//16:cmax//16]
 
-        # this_keys = torch.cat([all_keys, prev_key], dim=3)
-        # this_values = torch.cat([all_values, prev_value], dim=3)
-        
-        # segment
-        logit = model(AFs[:,:,t_step], this_keys, this_values, torch.tensor([num_objects]))
-        Es[:,:,t_step] = F.softmax(logit, dim=1)
-        
-        # # update
-        # if t-1 in to_memorize:
-        #     keys, values = this_keys, this_values
+            this_keys = torch.cat([be_keys, af_keys], 3).cuda()
+            this_values = torch.cat([be_values, af_values], 3).cuda()
+
+            prev_key = prev_key[:,obj_idx : obj_idx+1,:,:, rmin//16:rmax//16, cmin//16:cmax//16]
+            prev_value = prev_value[:,obj_idx : obj_idx+1,:,:, rmin//16:rmax//16, cmin//16:cmax//16]
+
+            this_keys = torch.cat([this_keys, prev_key], 3)
+            this_values = torch.cat([this_values, prev_value], 3)
+            
+            print(this_keys.shape, this_values.shape, AFs.shape)
+
+            # segment
+            ps = model(AFs[:,:,t_step,rmin:rmax,cmin:cmax], this_keys, this_values, num_objects=torch.tensor([1]), only_obj=True)
+            class_prob[:,obj_idx, rmin:rmax, cmin:cmax] = ps
+            
+        logit = model.module.Soft_aggregation(ps, k)
+        Es[:,:,t_step] = F.softmax(logit, dim=1).cpu()
         
     pred = np.argmax(Es[0].cpu().numpy(), axis=0).astype(np.uint8)
     return pred, Es
@@ -152,7 +165,7 @@ pth_path = 'STM_weights.pth'
 print('Loading weights:', pth_path)
 model.load_state_dict(torch.load(pth_path))
 
-code_name = 'YouTube_fromGT_b%d_a%d' % (before, after)
+code_name = 'YouTube_BB_b%d_a%d' % (before, after)
 
 for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
     Fs, Ms, AFs, info = V
@@ -160,6 +173,8 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
     num_frames = info['num_frames'][0].item()
     num_objects = info['num_objects'][0]
     
+    print(seq_name)
+
     with torch.no_grad():
         try:
             pred, Es = Run_video(Fs, Ms, AFs, mem_before=before, mem_after=after, num_objects=num_objects)
