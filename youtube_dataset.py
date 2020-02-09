@@ -41,7 +41,7 @@ class YOUTUBE_VOS_MO_Test(data.Dataset):
             _mask = np.array(Image.open(path.join(self.mask_dir, vid, first_mask)).convert("P"))
             self.shape[vid] = np.shape(_mask)
 
-        self.K = 11
+        self.K = 7
 
     def __len__(self):
         return len(self.videos)
