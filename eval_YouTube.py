@@ -47,6 +47,8 @@ def get_arguments():
     parser.add_argument("--before", type=int, help='Memory before', default=3)
     parser.add_argument("--after", type=int, help='Memory after', default=3)
 
+    parser.add_argument('--extra_id', default='')
+
     return parser.parse_args()
 
 args = get_arguments()
@@ -173,12 +175,14 @@ print('Loading weights:', pth_path)
 model.load_state_dict(torch.load(pth_path))
 
 code_name = 'YouTube_BB_b%d_a%d' % (before, after)
+code_name += args.extra_id
 
 for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redirect_stdout=True):
     Fs, Ms, AFs, info = V
     seq_name = info['name'][0]
     num_frames = info['num_frames'][0].item()
     num_objects = info['num_objects'][0]
+    frames_name = info['frames_name']
     
     print(seq_name)
 
@@ -194,28 +198,25 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
     test_path = os.path.join('./test', code_name, seq_name)
     if not os.path.exists(test_path):
         os.makedirs(test_path)
-    for f in range(num_frames):
-        img_E = Image.fromarray(pred[f])
+    for i, f_name in enumerate(frames_name):
+        img_E = Image.fromarray(pred[i])
         img_E.putpalette(palette)
-        img_E.save(os.path.join(test_path, '{:05d}.png'.format(f)))
+        img_E.save(os.path.join(test_path, f_name[0].replace('.jpg', '.png')))
 
-    if VIZ:
-        from helpers import overlay_davis
-        # visualize results #######################
-        viz_path = os.path.join('./viz/', code_name, seq_name)
-        if not os.path.exists(viz_path):
-            os.makedirs(viz_path)
+    # if VIZ:
+    #     from helpers import overlay_davis
+    #     # visualize results #######################
+    #     viz_path = os.path.join('./viz/', code_name, seq_name)
+    #     if not os.path.exists(viz_path):
+    #         os.makedirs(viz_path)
 
-        for f in range(num_frames):
-            pF = (Fs[0,:,f].permute(1,2,0).numpy() * 255.).astype(np.uint8)
-            pE = pred[f]
-            canvas = overlay_davis(pF, pE, palette)
-            canvas = Image.fromarray(canvas)
-            canvas.save(os.path.join(viz_path, 'f{}.jpg'.format(f)))
+    #     for f in range(num_frames):
+    #         pF = (Fs[0,:,f].permute(1,2,0).numpy() * 255.).astype(np.uint8)
+    #         pE = pred[f]
+    #         canvas = overlay_davis(pF, pE, palette)
+    #         canvas = Image.fromarray(canvas)
+    #         canvas.save(os.path.join(viz_path, 'f{}.jpg'.format(f)))
 
-        vid_path = os.path.join('./viz/', code_name, '{}.mp4'.format(seq_name))
-        frame_path = os.path.join('./viz/', code_name, seq_name, 'f%d.jpg')
-        os.system('ffmpeg -framerate 10 -i {} {} -vcodec libx264 -crf 10  -pix_fmt yuv420p  -nostats -loglevel 0 -y'.format(frame_path, vid_path))
-
-
-
+    #     vid_path = os.path.join('./viz/', code_name, '{}.mp4'.format(seq_name))
+    #     frame_path = os.path.join('./viz/', code_name, seq_name, 'f%d.jpg')
+    #     os.system('ffmpeg -framerate 10 -i {} {} -vcodec libx264 -crf 10  -pix_fmt yuv420p  -nostats -loglevel 0 -y'.format(frame_path, vid_path))
