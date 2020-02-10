@@ -37,8 +37,8 @@ def get_arguments():
     parser = argparse.ArgumentParser(description="SST")
     # parser.add_argument("-g", type=str, help="0; 0,1; 0,3; etc", required=True)
     parser.add_argument("-viz", help="Save visualization", action="store_true")
-    parser.add_argument("--vos_root", type=str, help="path to data", default='../YouTube/vos/train')
-    parser.add_argument("--af_root", type=str, help="path to data", default='../YouTube/vos/all_frames/train')
+    parser.add_argument("--vos_root", type=str, help="path to data", default='../YouTube/vos/train_480p')
+    parser.add_argument("--af_root", type=str, help="path to data", default='../YouTube/vos/all_frames/train_480p')
 
     parser.add_argument("--id", type=int, help='Id out of total ID for partitioning', default=0)
     parser.add_argument("--total_id", type=int, help='Total ID for partitioning', default=1)
@@ -174,7 +174,7 @@ pth_path = 'STM_weights.pth'
 print('Loading weights:', pth_path)
 model.load_state_dict(torch.load(pth_path))
 
-code_name = 'YouTube_BB_b%d_a%d' % (before, after)
+code_name = 'YouTube_480_BB_b%d_a%d' % (before, after)
 code_name += args.extra_id
 
 for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redirect_stdout=True):
