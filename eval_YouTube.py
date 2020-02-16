@@ -83,6 +83,10 @@ def Run_video(Fs, Ms, AFs, num_objects, info):
     _, _, at, h, w = AFs.shape
     _, k, _, _, _ = Ms.shape
 
+    Fs = Fs.cuda(non_blocking=True)
+    AFs = AFs.cuda(non_blocking=True)
+    Ms = Ms.cuda(non_blocking=True)
+
     for ref_idx in range(t):
 
         ref_key, ref_value = model(Fs[:,:,ref_idx], Ms[:,:,ref_idx], num_objects=torch.tensor([num_objects]))
@@ -94,7 +98,7 @@ def Run_video(Fs, Ms, AFs, num_objects, info):
         for t_step in range(1, at):
             # segment
             logit = model(AFs[:,:,t_step], ref_key, ref_value, torch.tensor([num_objects]))
-            Es[:,:,t_step] = F.softmax(logit, dim=1).cpu()
+            Es[:,:,t_step] = F.softmax(logit, dim=1)
         
         pred = np.argmax(Es[0].cpu().numpy(), axis=0).astype(np.uint8)
 
