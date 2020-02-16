@@ -83,10 +83,6 @@ def Run_video(Fs, Ms, AFs, num_objects, info):
     _, _, at, h, w = AFs.shape
     _, k, _, _, _ = Ms.shape
 
-    Fs = Fs.cuda(non_blocking=True)
-    AFs = AFs.cuda(non_blocking=True)
-    Ms = Ms.cuda(non_blocking=True)
-
     for ref_idx in range(t):
 
         ref_key, ref_value = model(Fs[:,:,ref_idx], Ms[:,:,ref_idx], num_objects=torch.tensor([num_objects]))
@@ -125,12 +121,18 @@ model.load_state_dict(torch.load(pth_path))
 code_name = 'YouTube_one_ref_%d_%d' % (id, total_id)
 code_name += args.extra_id
 
+skipped = []
+
 for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redirect_stdout=True):
     Fs, Ms, AFs, info = V
     seq_name = info['name'][0]
     num_frames = info['num_frames'][0].item()
     num_objects = info['num_objects'][0]
     frames_name = info['frames_name']
+
+    Fs = Fs.cuda(non_blocking=True)
+    AFs = AFs.cuda(non_blocking=True)
+    Ms = Ms.cuda(non_blocking=True)
     
     print(seq_name)
 
@@ -139,9 +141,15 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
             Run_video(Fs, Ms, AFs, num_objects=num_objects, info=info)
         except RuntimeError as e:
             print('Exception', e, seq_name)
-            torch.cuda.empty_cache()
-            Run_video(Fs, Ms, AFs, num_objects=num_objects, info=info)
+            skipped.append(seq_name)
+            print('Skipped: ', skipped)
+            # Run_video(Fs, Ms, AFs, num_objects=num_objects, info=info)
+
+    del Fs
+    del AFs
+    del Ms
         
     # Save results for quantitative eval ######################
 
+print('Total skipped: ', skipped)
 
