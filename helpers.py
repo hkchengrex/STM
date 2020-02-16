@@ -23,9 +23,9 @@ import copy
 def ToCuda(xs):
     if torch.cuda.is_available():
         if isinstance(xs, list) or isinstance(xs, tuple):
-            return [x.cuda() for x in xs]
+            return [x.cuda(non_blocking=True) for x in xs]
         else:
-            return xs.cuda() 
+            return xs.cuda(non_blocking=True) 
     else:
         return xs
 

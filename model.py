@@ -197,7 +197,7 @@ class STM(nn.Module):
     def Pad_memory(self, mems, num_objects, K):
         pad_mems = []
         for mem in mems:
-            pad_mem = ToCuda(torch.zeros(1, K, mem.size()[1], 1, mem.size()[2], mem.size()[3]))
+            pad_mem = torch.zeros((1, K, mem.size()[1], 1, mem.size()[2], mem.size()[3]), device=mem.device)
             pad_mem[0,1:num_objects+1,:,0] = mem
             pad_mems.append(pad_mem)
         return pad_mems
@@ -229,7 +229,7 @@ class STM(nn.Module):
 
     def Soft_aggregation(self, ps, K):
         num_objects, H, W = ps.shape
-        em = ToCuda(torch.zeros(1, K, H, W)) 
+        em = torch.zeros((1, K, H, W), device=ps.device)
         em[0,0] =  torch.prod(1-ps, dim=0) # bg prob
         em[0,1:num_objects+1] = ps # obj prob
         em = torch.clamp(em, 1e-7, 1-1e-7)
