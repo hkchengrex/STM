@@ -22,6 +22,7 @@ class YOUTUBE_VOS_MO_Test(data.Dataset):
         self.num_frames = {}
         self.shape = {}
         self.frames_name = {}
+        self.skip_frames_name = {}
 
         self_vid_list = sorted(os.listdir(self.image_dir))
         
@@ -35,6 +36,7 @@ class YOUTUBE_VOS_MO_Test(data.Dataset):
         for vid in self_vid_list:
             self.videos.append(vid)
             self.num_skip_frames[vid] = len(os.listdir(os.path.join(self.image_dir, vid)))
+            self.skip_frames_name[vid] = sorted(os.listdir(os.path.join(self.image_dir, vid)))
             self.num_frames[vid] = len(os.listdir(os.path.join(self.all_frames_image_dir, vid)))
             self.frames_name[vid] = sorted(os.listdir(os.path.join(self.all_frames_image_dir, vid)))
             first_mask = os.listdir(path.join(self.mask_dir, vid))[0]
@@ -66,6 +68,7 @@ class YOUTUBE_VOS_MO_Test(data.Dataset):
         info['num_skip_frames'] = self.num_skip_frames[video]
         info['num_objects'] = 0
         info['frames_name'] = self.frames_name[video]
+        info['skip_frames_name'] = self.skip_frames_name[video]
 
         N_all_frames = np.empty((self.num_frames[video],)+self.shape[video]+(3,), dtype=np.float32)
 

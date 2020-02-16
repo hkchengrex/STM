@@ -152,8 +152,6 @@ class Memory(nn.Module):
         B, D_e, T, H, W = m_in.size()
         _, D_o, _, _, _ = m_out.size()
 
-        # print('In out', q_in.shape, q_out.shape)
-
         mi = m_in.view(B, D_e, T*H*W) 
         mi = torch.transpose(mi, 1, 2)  # b, THW, emb
  
@@ -238,7 +236,7 @@ class STM(nn.Module):
         logit = torch.log((em /(1-em)))
         return logit
 
-    def segment(self, frame, keys, values, num_objects, only_obj=False): 
+    def segment(self, frame, keys, values, num_objects): 
         num_objects = num_objects[0].item()
         _, K, keydim, T, H, W = keys.shape # B = 1
         # pad
@@ -252,25 +250,19 @@ class STM(nn.Module):
         r3e, r2e = r3.expand(num_objects,-1,-1,-1), r2.expand(num_objects,-1,-1,-1)
         
         # memory select kv:(1, K, C, T, H, W)
-        if not only_obj:
-            m4, viz = self.Memory(keys[0,1:num_objects+1], values[0,1:num_objects+1], k4e, v4e)
-        else:
-            m4, viz = self.Memory(keys[0,0:1], values[0,0:1], k4e, v4e)
+        m4, viz = self.Memory(keys[0,1:num_objects+1], values[0,1:num_objects+1], k4e, v4e)
         logits = self.Decoder(m4, r3e, r2e)
         ps = F.softmax(logits, dim=1)[:,1] # no, h, w  
         #ps = indipendant possibility to belong to each object
         
-        # logit = self.Soft_aggregation(ps, K) # 1, K, H, W
-
-        # print(ps.shape)
+        logit = self.Soft_aggregation(ps, K) # 1, K, H, W
 
         if pad[2]+pad[3] > 0:
-            ps = ps[:,pad[2]:-pad[3],:]
+            logit = logit[:,:,pad[2]:-pad[3],:]
         if pad[0]+pad[1] > 0:
-            ps = ps[:,:,pad[0]:-pad[1]]
+            logit = logit[:,:,:,pad[0]:-pad[1]]
 
-        # return logit 
-        return ps
+        return logit    
 
     def forward(self, *args, **kwargs):
         if args[1].dim() > 4: # keys
