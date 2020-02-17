@@ -130,9 +130,9 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
     num_objects = info['num_objects'][0]
     frames_name = info['frames_name']
 
-    Fs = Fs.cuda(non_blocking=True)
-    AFs = AFs.cuda(non_blocking=True)
-    Ms = Ms.cuda(non_blocking=True)
+    # Fs = Fs.cuda(non_blocking=True)
+    # AFs = AFs.cuda(non_blocking=True)
+    # Ms = Ms.cuda(non_blocking=True)
     
     print(seq_name)
 

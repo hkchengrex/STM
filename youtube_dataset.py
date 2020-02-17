@@ -33,7 +33,7 @@ class YOUTUBE_VOS_MO_Test(data.Dataset):
 
         self_vid_list = self_vid_list[start_idx:end_idx]
 
-        for vid in self_vid_list:
+        for vid in ['ce2776f78f', 'd704766646']:
             self.videos.append(vid)
             self.num_skip_frames[vid] = len(os.listdir(os.path.join(self.image_dir, vid)))
             self.skip_frames_name[vid] = sorted(os.listdir(os.path.join(self.image_dir, vid)))
