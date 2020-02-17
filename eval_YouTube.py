@@ -44,6 +44,8 @@ def get_arguments():
     parser.add_argument("--start", type=int, help='Start IDX  (inclusive)', default=0)
     parser.add_argument("--end", type=int, help='END IDX (inclusive)', default=0)
 
+    parser.add_argument("--extra_id", type=str, default='')
+
     return parser.parse_args()
 
 args = get_arguments()
