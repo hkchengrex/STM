@@ -41,10 +41,8 @@ def get_arguments():
     parser.add_argument("--af_root", type=str, help="path to data", default='../YouTube/vos/all_frames/train_480p')
 
     parser.add_argument("--id", type=int, help='Id out of total ID for partitioning', default=0)
-    parser.add_argument("--total_id", type=int, help='Total ID for partitioning', default=1)
-    parser.add_argument("--start_idx", type=int, help='Skip some index in the current partition', default=0)
-
-    parser.add_argument('--extra_id', default='')
+    parser.add_argument("--start", type=int, help='Start IDX  (inclusive)', default=0)
+    parser.add_argument("--end", type=int, help='END IDX (inclusive)', default=0)
 
     return parser.parse_args()
 
@@ -56,8 +54,8 @@ VOS_ROOT = args.vos_root
 AF_ROOT = args.af_root
 
 id = args.id
-total_id = args.total_id
-start_idx = args.start_idx
+start_idx = args.start
+end_idx = args.end
 
 # Model and version
 MODEL = 'STM'
@@ -106,7 +104,7 @@ def Run_video(Fs, Ms, AFs, num_objects, info):
             img_E.save(os.path.join(test_path, f_name[0].replace('.jpg', '.png')))
 
 
-Testset = YOUTUBE_VOS_MO_Test(VOS_ROOT, AF_ROOT, id=id, total_id=total_id, skip_idx=start_idx)
+Testset = YOUTUBE_VOS_MO_Test(VOS_ROOT, AF_ROOT, start_idx, end_idx)
 Testloader = data.DataLoader(Testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)
 
 model = nn.DataParallel(STM())

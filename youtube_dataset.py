@@ -12,7 +12,7 @@ import glob
 class YOUTUBE_VOS_MO_Test(data.Dataset):
     # for multi object, do shuffling
 
-    def __init__(self, root, all_frames_root, id, total_id, skip_idx):
+    def __init__(self, root, all_frames_root, start_idx, end_idx):
         self.root = root
         self.mask_dir = path.join(root, 'Annotations')
         self.image_dir = path.join(root, 'JPEGImages')
@@ -25,13 +25,10 @@ class YOUTUBE_VOS_MO_Test(data.Dataset):
         self.skip_frames_name = {}
 
         self_vid_list = sorted(os.listdir(self.image_dir))
-        
-        start_idx = len(self_vid_list) * id // total_id + skip_idx
-        end_idx = len(self_vid_list) * (id+1) // total_id
 
-        print('This process handles video %d to %d out of %d' % (start_idx, end_idx-1, len(self_vid_list)))
+        print('This process handles video %d to %d out of %d' % (start_idx, end_idx, len(self_vid_list)))
 
-        self_vid_list = self_vid_list[start_idx:end_idx]
+        self_vid_list = self_vid_list[start_idx:end_idx+1]
 
         for vid in self_vid_list:
             self.videos.append(vid)
