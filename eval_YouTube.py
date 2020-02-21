@@ -83,27 +83,27 @@ def Run_video(Fs, Ms, AFs, num_objects, info):
     _, _, at, h, w = AFs.shape
     _, k, _, _, _ = Ms.shape
 
-    for ref_idx in range(t):
+    ref_idx = 0
 
-        ref_key, ref_value = model(Fs[:,:,ref_idx], Ms[:,:,ref_idx], num_objects=torch.tensor([num_objects]))
+    ref_key, ref_value = model(Fs[:,:,ref_idx], Ms[:,:,ref_idx], num_objects=torch.tensor([num_objects]))
 
-        Es = torch.zeros((b, k, at, h, w), dtype=torch.float32, device=Ms.device)
-        Es[:,:,0] = Ms[:,:,0]
+    Es = torch.zeros((b, k, at, h, w), dtype=torch.float32, device=Ms.device)
+    Es[:,:,0] = Ms[:,:,0]
 
-        # for t_step in tqdm.tqdm(range(1, num_frames)):
-        for t_step in range(1, at):
-            # segment
-            logit = model(AFs[:,:,t_step], ref_key, ref_value, torch.tensor([num_objects]))
-            Es[:,:,t_step] = F.softmax(logit, dim=1)
-        
-        pred = np.argmax(Es[0].cpu().numpy(), axis=0).astype(np.uint8)
+    # for t_step in tqdm.tqdm(range(1, num_frames)):
+    for t_step in range(1, at):
+        # segment
+        logit = model(AFs[:,:,t_step], ref_key, ref_value, torch.tensor([num_objects]))
+        Es[:,:,t_step] = F.softmax(logit, dim=1)
+    
+    pred = np.argmax(Es[0].cpu().numpy(), axis=0).astype(np.uint8)
 
-        test_path = os.path.join('./test', code_name, seq_name, skip_frames_names[ref_idx][0][:-4])
-        os.makedirs(test_path, exist_ok=True)
-        for i, f_name in enumerate(frames_name):
-            img_E = Image.fromarray(pred[i])
-            img_E.putpalette(palette)
-            img_E.save(os.path.join(test_path, f_name[0].replace('.jpg', '.png')))
+    test_path = os.path.join('./test', code_name, seq_name, skip_frames_names[ref_idx][0][:-4])
+    os.makedirs(test_path, exist_ok=True)
+    for i, f_name in enumerate(frames_name):
+        img_E = Image.fromarray(pred[i])
+        img_E.putpalette(palette)
+        img_E.save(os.path.join(test_path, f_name[0].replace('.jpg', '.png')))
 
 
 Testset = YOUTUBE_VOS_MO_Test(VOS_ROOT, AF_ROOT, start_idx, end_idx)
