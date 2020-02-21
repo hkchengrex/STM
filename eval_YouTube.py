@@ -118,7 +118,7 @@ pth_path = 'STM_weights.pth'
 print('Loading weights:', pth_path)
 model.load_state_dict(torch.load(pth_path))
 
-code_name = 'YouTube_one_ref_s%d_e%d' % (start_idx, end_idx)
+code_name = 'YouTube_one_ref_0_s%d_e%d' % (start_idx, end_idx)
 code_name += args.extra_id
 
 skipped = []
