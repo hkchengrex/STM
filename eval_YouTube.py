@@ -39,8 +39,10 @@ def get_arguments():
     parser.add_argument("--af_root", type=str, help="path to data", default='../YouTube/vos/all_frames/train')
 
     parser.add_argument("--id", type=int, help='Id out of total ID for partitioning', default=0)
-    parser.add_argument("--total_id", type=int, help='Total ID for partitioning', default=1)
-    parser.add_argument("--start_idx", type=int, help='Skip some index in the current partition', default=0)
+    parser.add_argument("--start", type=int, help='Start IDX  (inclusive)', default=0)
+    parser.add_argument("--end", type=int, help='END IDX (inclusive)', default=0)
+
+    parser.add_argument("--extra_id", type=str, default='')
 
     parser.add_argument("--before", type=int, help='Memory before')
     parser.add_argument("--after", type=int, help='Memory after')
@@ -55,8 +57,8 @@ VOS_ROOT = args.vos_root
 AF_ROOT = args.af_root
 
 id = args.id
-total_id = args.total_id
-start_idx = args.start_idx
+start_idx = args.start
+end_idx = args.end
 before = args.before
 after = args.after
 
@@ -67,11 +69,6 @@ print(MODEL, ': Testing on YouTube')
 # os.environ['CUDA_VISIBLE_DEVICES'] = GPU
 if torch.cuda.is_available():
     print('using Cuda devices, num:', torch.cuda.device_count())
-
-if VIZ:
-    print('--- Produce mask overaid video outputs. Evaluation will run slow.')
-    print('--- Require FFMPEG for encoding, Check folder ./viz')
-
 
 palette = Image.open(path.join(VOS_ROOT, 'Annotations/0a2f2bd294/00000.png')).getpalette()
 
@@ -140,7 +137,7 @@ def Run_video(Fs, Ms, AFs, mem_before, mem_after, num_objects):
 
 
 
-Testset = YOUTUBE_VOS_MO_Test(VOS_ROOT, AF_ROOT, id=id, total_id=total_id, skip_idx=start_idx)
+Testset = YOUTUBE_VOS_MO_Test(VOS_ROOT, AF_ROOT, start_idx=start_idx, end_idx=end_idx)
 Testloader = data.DataLoader(Testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)
 
 model = nn.DataParallel(STM())
@@ -152,21 +149,25 @@ pth_path = 'STM_weights.pth'
 print('Loading weights:', pth_path)
 model.load_state_dict(torch.load(pth_path))
 
-code_name = 'YouTube_fromGT_b%d_a%d' % (before, after)
+code_name = 'YouTube_%d_%d' % (start_idx, end_idx)
+skipped = []
 
-for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
+for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redirect_stdout=True):
     Fs, Ms, AFs, info = V
     seq_name = info['name'][0]
     num_frames = info['num_frames'][0].item()
     num_objects = info['num_objects'][0]
+    frames_name = info['frames_name']
+
+    print(seq_name)
     
     with torch.no_grad():
         try:
             pred, Es = Run_video(Fs, Ms, AFs, mem_before=before, mem_after=after, num_objects=num_objects)
         except RuntimeError as e:
             print('Exception', e, seq_name)
-            torch.cuda.empty_cache()
-            pred, Es = Run_video(Fs, Ms, AFs, mem_before=before, mem_after=after, num_objects=num_objects)
+            skipped.append(seq_name)
+            print('Skipped: ', skipped)
         
     # Save results for quantitative eval ######################
     test_path = os.path.join('./test', code_name, seq_name)
@@ -176,24 +177,4 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader)):
         img_E = Image.fromarray(pred[f])
         img_E.putpalette(palette)
         img_E.save(os.path.join(test_path, '{:05d}.png'.format(f)))
-
-    if VIZ:
-        from helpers import overlay_davis
-        # visualize results #######################
-        viz_path = os.path.join('./viz/', code_name, seq_name)
-        if not os.path.exists(viz_path):
-            os.makedirs(viz_path)
-
-        for f in range(num_frames):
-            pF = (Fs[0,:,f].permute(1,2,0).numpy() * 255.).astype(np.uint8)
-            pE = pred[f]
-            canvas = overlay_davis(pF, pE, palette)
-            canvas = Image.fromarray(canvas)
-            canvas.save(os.path.join(viz_path, 'f{}.jpg'.format(f)))
-
-        vid_path = os.path.join('./viz/', code_name, '{}.mp4'.format(seq_name))
-        frame_path = os.path.join('./viz/', code_name, seq_name, 'f%d.jpg')
-        os.system('ffmpeg -framerate 10 -i {} {} -vcodec libx264 -crf 10  -pix_fmt yuv420p  -nostats -loglevel 0 -y'.format(frame_path, vid_path))
-
-
 

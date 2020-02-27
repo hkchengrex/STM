@@ -9,18 +9,18 @@ from torch.utils import data
 
 import glob
 
-class YOUTUBE_VOS_MO_Test(data.Dataset):
+class YOUTUBE_VOS_MO_Test_val(data.Dataset):
     # for multi object, do shuffling
 
-    def __init__(self, root, all_frames_root, start_idx, end_idx):
+    def __init__(self, root, all_frames_root, fz_root, start_idx, end_idx):
         self.root = root
         self.mask_dir = path.join(root, 'Annotations')
-        self.image_dir = path.join(root, 'JPEGImages')
-        self.all_frames_image_dir = path.join(all_frames_root, 'JPEGImages')
+        self.image_dir = path.join(all_frames_root, 'JPEGImages')
+        self.fz_mask_dir = path.join(fz_root, 'Annotations')
         self.videos = []
-        self.num_skip_frames = {}
         self.num_frames = {}
         self.shape = {}
+        self.real_shape = {}
         self.frames_name = {}
 
         self_vid_list = sorted(os.listdir(self.image_dir))
@@ -30,13 +30,20 @@ class YOUTUBE_VOS_MO_Test(data.Dataset):
         self_vid_list = self_vid_list[start_idx:end_idx]
 
         for vid in self_vid_list:
+
+            if vid != 'f99dae3620':
+                continue
+
             self.videos.append(vid)
-            self.num_skip_frames[vid] = len(os.listdir(os.path.join(self.image_dir, vid)))
-            self.num_frames[vid] = len(os.listdir(os.path.join(self.all_frames_image_dir, vid)))
-            self.frames_name[vid] = sorted(os.listdir(os.path.join(self.all_frames_image_dir, vid)))
+            self.num_frames[vid] = len(os.listdir(os.path.join(self.image_dir, vid)))
+            self.frames_name[vid] = sorted(os.listdir(os.path.join(self.image_dir, vid)))
             first_mask = os.listdir(path.join(self.mask_dir, vid))[0]
             _mask = np.array(Image.open(path.join(self.mask_dir, vid, first_mask)).convert("P"))
             self.shape[vid] = np.shape(_mask)
+
+            first_mask = os.listdir(path.join(self.fz_mask_dir, vid))[0]
+            _mask = np.array(Image.open(path.join(self.fz_mask_dir, vid, first_mask)).convert("P"))
+            self.real_shape[vid] = np.shape(_mask)
 
         self.K = 7
 
@@ -60,34 +67,32 @@ class YOUTUBE_VOS_MO_Test(data.Dataset):
         info = {}
         info['name'] = video
         info['num_frames'] = self.num_frames[video]
-        info['num_skip_frames'] = self.num_skip_frames[video]
         info['num_objects'] = 0
         info['frames_name'] = self.frames_name[video]
+        info['real_shape'] = self.real_shape[video]
 
-        N_all_frames = np.empty((self.num_frames[video],)+self.shape[video]+(3,), dtype=np.float32)
+        N_frames = np.empty((self.num_frames[video],)+self.shape[video]+(3,), dtype=np.float32)
+        # N_masks = np.empty((self.num_skip_frames[video],)+self.shape[video], dtype=np.uint8)
+        N_ref_msk = []
+        ref_id = []
 
-        N_frames = np.empty((self.num_skip_frames[video],)+self.shape[video]+(3,), dtype=np.float32)
-        N_masks = np.empty((self.num_skip_frames[video],)+self.shape[video], dtype=np.uint8)
         for i, f in enumerate(sorted(os.listdir(path.join(self.image_dir, video)))):
             img_file = path.join(self.image_dir, video, f)
             N_frames[i] = np.array(Image.open(img_file).convert('RGB'))/255.
  
             mask_file = path.join(self.mask_dir, video, f.replace('.jpg', '.png'))
-            N_masks[i] = np.array(Image.open(mask_file).convert('P'), dtype=np.uint8)
+            if os.path.exists(mask_file):
+                N_ref_msk.append(np.array(Image.open(mask_file).convert('P'), dtype=np.uint8))
+                ref_id.append(i)
 
-            info['num_objects'] = max(info['num_objects'], N_masks[i].max())
+        N_ref_msk = np.array(N_ref_msk)
+        info['num_objects'] = N_ref_msk.max()
+        info['ref_id'] = ref_id
 
-        for i, f in enumerate(info['frames_name']):
-            img_file = path.join(self.all_frames_image_dir, video, f)
-            N_all_frames[i] = np.array(Image.open(img_file).convert('RGB'))/255.
-
-        
         Fs = torch.from_numpy(np.transpose(N_frames.copy(), (3, 0, 1, 2)).copy()).float()
-        Ms = torch.from_numpy(self.All_to_onehot(N_masks).copy()).float()
-
-        AFs = torch.from_numpy(np.transpose(N_all_frames.copy(), (3, 0, 1, 2)).copy()).float()
+        Ms = torch.from_numpy(self.All_to_onehot(N_ref_msk).copy()).float()
         
-        return Fs, Ms, AFs, info
+        return Fs, Ms, info
 
 
 
