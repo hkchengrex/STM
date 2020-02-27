@@ -31,8 +31,8 @@ class YOUTUBE_VOS_MO_Test_val(data.Dataset):
 
         for vid in self_vid_list:
 
-            if vid != 'f99dae3620':
-                continue
+            # if vid != 'f99dae3620':
+            #     continue
 
             self.videos.append(vid)
             self.num_frames[vid] = len(os.listdir(os.path.join(self.image_dir, vid)))
