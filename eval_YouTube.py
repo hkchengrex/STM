@@ -138,7 +138,7 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
     num_objects = info['num_objects'][0]
     frames_name = info['frames_name']
 
-    np.random.seed(int('0x'+seq_name, base=16))
+    np.random.seed(int('0x'+seq_name, base=16) % 2**31)
 
     Fs = Fs.cuda(non_blocking=True)
     AFs = AFs.cuda(non_blocking=True)
