@@ -85,7 +85,15 @@ def Run_video(Fs, Ms, AFs, num_objects, info):
 
     for ref_idx in range(t):
 
-        ref_key, ref_value = model(Fs[:,:,ref_idx], Ms[:,:,ref_idx], num_objects=torch.tensor([num_objects]))
+        rand_idx = np.random.choice(t, 3, replace=False)
+        ref_key = []
+        ref_value = []
+        for r_idx in rand_idx:
+            r_key, r_value = model(Fs[:,:,r_idx], Ms[:,:,r_idx], num_objects=torch.tensor([num_objects]))
+            ref_key.append(r_key)
+            ref_value.append(r_value)
+        ref_key = torch.cat(ref_key, 3)
+        ref_value = torch.cat(ref_value, 3)
 
         Es = torch.zeros((b, k, at, h, w), dtype=torch.float32, device='cuda:0')
         Es[:,:,0] = Ms[:,:,0]
@@ -118,7 +126,7 @@ pth_path = 'STM_weights.pth'
 print('Loading weights:', pth_path)
 model.load_state_dict(torch.load(pth_path))
 
-code_name = 'YouTube_one_ref_s%d_e%d' % (start_idx, end_idx)
+code_name = 'YouTube_rand_3ref'
 code_name += args.extra_id
 
 skipped = []
@@ -129,6 +137,8 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
     num_frames = info['num_frames'][0].item()
     num_objects = info['num_objects'][0]
     frames_name = info['frames_name']
+
+    np.random.seed(int('0x'+seq_name, base=16))
 
     Fs = Fs.cuda(non_blocking=True)
     AFs = AFs.cuda(non_blocking=True)
@@ -144,6 +154,7 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
             skipped.append(seq_name)
             print('Skipped: ', skipped)
             # Run_video(Fs, Ms, AFs, num_objects=num_objects, info=info)
+            raise e
 
     del Fs
     del AFs
