@@ -154,7 +154,7 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
             skipped.append(seq_name)
             print('Skipped: ', skipped)
             # Run_video(Fs, Ms, AFs, num_objects=num_objects, info=info)
-            raise e
+            #raise e
 
     del Fs
     del AFs
