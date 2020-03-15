@@ -87,14 +87,14 @@ def Run_video(Fs, Ms, AFs, num_objects, info):
 
         ref_key, ref_value = model(Fs[:,:,ref_idx], Ms[:,:,ref_idx], num_objects=torch.tensor([num_objects]))
 
-        Es = torch.zeros((b, k, at, h, w), dtype=torch.float32, device=Ms.device)
+        Es = torch.zeros((b, k, at, h, w), dtype=torch.float32, device='cuda:0')
         Es[:,:,0] = Ms[:,:,0]
 
         # for t_step in tqdm.tqdm(range(1, num_frames)):
         for t_step in range(1, at):
             # segment
             logit = model(AFs[:,:,t_step], ref_key, ref_value, torch.tensor([num_objects]))
-            Es[:,:,t_step] = F.softmax(logit, dim=1).cpu()
+            Es[:,:,t_step] = F.softmax(logit, dim=1)
         
         pred = np.argmax(Es[0].cpu().numpy(), axis=0).astype(np.uint8)
 
