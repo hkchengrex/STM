@@ -94,7 +94,7 @@ def Run_video(Fs, Ms, AFs, num_objects, info):
         for t_step in range(1, at):
             # segment
             logit = model(AFs[:,:,t_step], ref_key, ref_value, torch.tensor([num_objects]))
-            Es[:,:,t_step] = F.softmax(logit, dim=1).cpu()
+            Es[:,:,t_step] = F.softmax(logit, dim=1)
         
         pred = np.argmax(Es[0].cpu().numpy(), axis=0).astype(np.uint8)
 
@@ -130,9 +130,9 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
     num_objects = info['num_objects'][0]
     frames_name = info['frames_name']
 
-    #Fs = Fs.cuda(non_blocking=True)
-    #AFs = AFs.cuda(non_blocking=True)
-    #Ms = Ms.cuda(non_blocking=True)
+    Fs = Fs.cuda(non_blocking=True)
+    AFs = AFs.cuda(non_blocking=True)
+    Ms = Ms.cuda(non_blocking=True)
     
     print(seq_name)
 
