@@ -7,6 +7,7 @@ import torch
 import torchvision
 from torch.utils import data
 
+from extra_para_io import load_sub_val
 import glob
 
 class YOUTUBE_VOS_MO_Test_val(data.Dataset):
@@ -24,15 +25,14 @@ class YOUTUBE_VOS_MO_Test_val(data.Dataset):
         self.frames_name = {}
 
         self_vid_list = sorted(os.listdir(self.image_dir))
+        sub_val_list = load_sub_val()
+        self_vid_list = [v for v in self_vid_list if v in sub_val_list]
 
         print('This process handles video %d to %d out of %d' % (start_idx, end_idx-1, len(self_vid_list)))
 
         self_vid_list = self_vid_list[start_idx:end_idx]
 
         for vid in self_vid_list:
-
-            # if vid != 'f99dae3620':
-            #     continue
 
             self.videos.append(vid)
             self.num_frames[vid] = len(os.listdir(os.path.join(self.image_dir, vid)))

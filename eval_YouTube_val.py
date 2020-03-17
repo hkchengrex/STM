@@ -67,7 +67,10 @@ print(MODEL, ': Testing on YouTube')
 if torch.cuda.is_available():
     print('using Cuda devices, num:', torch.cuda.device_count())
 
-palette = Image.open(path.join(VOS_ROOT, 'Annotations/0a49f5265b/00000.png')).getpalette()
+try:
+    palette = Image.open(path.join(VOS_ROOT, 'Annotations/0a49f5265b/00000.png')).getpalette()
+except:
+    palette = Image.open(path.join(VOS_ROOT, 'Annotations/0a2f2bd294/00000.png')).getpalette()
 
 def Run_video(Fs, Ms, ref_id, num_objects, real_shape, Mem_every=None, Mem_number=None):
 
@@ -139,7 +142,7 @@ pth_path = 'STM_weights.pth'
 print('Loading weights:', pth_path)
 model.load_state_dict(torch.load(pth_path))
 
-code_name = 'YouTube_val_%d_%d' % (start_idx, end_idx)
+code_name = 'YouTube_val%s' % (extra_id)
 skipped = []
 
 for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redirect_stdout=True):
