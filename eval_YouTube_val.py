@@ -142,7 +142,7 @@ pth_path = 'STM_weights.pth'
 print('Loading weights:', pth_path)
 model.load_state_dict(torch.load(pth_path))
 
-code_name = 'YouTube_val%s' % (extra_id)
+code_name = 'YouTube_val%s' % (args.extra_id)
 skipped = []
 
 for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redirect_stdout=True):
