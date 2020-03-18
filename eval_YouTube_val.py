@@ -72,7 +72,7 @@ try:
 except:
     palette = Image.open(path.join(VOS_ROOT, 'Annotations/0a2f2bd294/00000.png')).getpalette()
 
-def Run_video(Fs, Ms, ref_id, num_objects, real_shape, Mem_every=None, Mem_number=None):
+def Run_video(Fs, Ms, ref_id, ref_new_obj, num_objects, real_shape, Mem_every=None, Mem_number=None):
 
     # print(Fs.shape, Ms.shape, AFs.shape)
     b, _, t, h, w = Fs.shape
@@ -87,37 +87,36 @@ def Run_video(Fs, Ms, ref_id, num_objects, real_shape, Mem_every=None, Mem_numbe
     else:
         raise NotImplementedError
 
+    # Memorize all reference frames as well
+    to_memorize = np.concatenate([to_memorize, ref_id])
+
     Es = torch.zeros((b, k, t, h, w), dtype=torch.float32, device=Ms.device)
-    ref_key = []
-    ref_value = []
-    for ei, i in enumerate(ref_id):
-        Es[:,:,i] = Ms[:,:,ei]
-        k, v = model(Fs[:,:,i], Es[:,:,i], torch.tensor([num_objects]))
-        ref_key.append(k)
-        ref_value.append(v)
 
-    keys = torch.cat(ref_key, 3)
-    values = torch.cat(ref_value, 3)
-
-    for t_step in range(t):
-        if t_step in ref_id:
-            continue
-
-        if (t_step+1) not in ref_id:
-            # memorize previous frame
+    Es[:,:,0] = Ms[:,:,0]
+    ref_step = 1
+    for t_step in range(1, t):
+    
+        # memorize previous frame
+        if t_step == 1:
+            this_keys, this_values = model(Fs[:,:,0], Es[:,:,0], torch.tensor([num_objects]))
+        else:
             prev_key, prev_value = model(Fs[:,:,t_step-1], Es[:,:,t_step-1], torch.tensor([num_objects]))
             this_keys = torch.cat([keys, prev_key], dim=3)
             this_values = torch.cat([values, prev_value], dim=3)
-        else:
-            this_keys = keys
-            this_values = values
         
         # segment
         logit = model(Fs[:,:,t_step], this_keys, this_values, torch.tensor([num_objects]))
         Es[:,:,t_step] = F.softmax(logit, dim=1)
+
+        # If new id, replace and memorize in next frame
+        if t_step in ref_id:
+            for o in ref_new_obj[ref_step]:
+                o = o.item()
+                Es[:,o,t_step] = Ms[:,o,ref_step]
+            ref_step += 1
         
         # update
-        if t-1 in to_memorize:
+        if t_step-1 in to_memorize:
             keys, values = this_keys, this_values
         else:
             del this_keys
@@ -153,21 +152,24 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
     frames_name = info['frames_name']
     real_shape = info['real_shape']
     ref_id = info['ref_id']
-    ref_id = [r[0] for r in ref_id] # Unsqueeze the batch dim
-
-    print(seq_name)
+    ref_id = [r[0].item() for r in ref_id] # Unsqueeze the batch dim
+    ref_new_obj = info['ref_new_obj']
+    ref_new_obj = [r[0] for r in ref_new_obj] # Unsqueeze the batch dim
     
+    print(seq_name)
+
     with torch.no_grad():
         try:
             try:
-                pred, Es = Run_video(Fs, Ms, ref_id, num_objects, real_shape, Mem_every=5, Mem_number=None)
-            except:
+                pred, Es = Run_video(Fs, Ms, ref_id, ref_new_obj, num_objects, real_shape, Mem_every=5, Mem_number=None)
+            except Exception as e:
                 print('Mem 5 failed. ')
+                raise e
                 try:
-                    pred, Es = Run_video(Fs, Ms, ref_id, num_objects, real_shape, Mem_every=7, Mem_number=None)
-                except:
+                    pred, Es = Run_video(Fs, Ms, ref_id, ref_new_obj, num_objects, real_shape, Mem_every=7, Mem_number=None)
+                except Exception:
                     print('Mem 7 failed. ')
-                    pred, Es = Run_video(Fs, Ms, ref_id, num_objects, real_shape, Mem_every=10, Mem_number=None)
+                    pred, Es = Run_video(Fs, Ms, ref_id, ref_new_obj, num_objects, real_shape, Mem_every=10, Mem_number=None)
 
 
             # Save results for quantitative eval ######################
@@ -184,6 +186,7 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
             print('Exception', e, seq_name)
             skipped.append(seq_name)
             print('Skipped: ', skipped)
+            raise e
         
 
 

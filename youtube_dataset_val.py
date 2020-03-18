@@ -76,18 +76,36 @@ class YOUTUBE_VOS_MO_Test_val(data.Dataset):
         N_ref_msk = []
         ref_id = []
 
+        # Store the new object id presented in the reference mask
+        ref_new_obj = []
+        # Store all the existing objects
+        existing_obj = []
+
         for i, f in enumerate(sorted(os.listdir(path.join(self.image_dir, video)))):
             img_file = path.join(self.image_dir, video, f)
             N_frames[i] = np.array(Image.open(img_file).convert('RGB'))/255.
  
             mask_file = path.join(self.mask_dir, video, f.replace('.jpg', '.png'))
             if os.path.exists(mask_file):
-                N_ref_msk.append(np.array(Image.open(mask_file).convert('P'), dtype=np.uint8))
-                ref_id.append(i)
+                msk_array = np.array(Image.open(mask_file).convert('P'), dtype=np.uint8)
+                msk_obj = np.unique(msk_array)
+                new_obj = np.setdiff1d(msk_obj, existing_obj)
+
+                if len(new_obj) > 0:
+                    # Neglect the objects that are not new
+                    for o in existing_obj:
+                        if o != 0:
+                            msk_array[msk_array==o] = 0
+                    # Update existing objects
+                    existing_obj = np.concatenate((existing_obj, new_obj))
+                    N_ref_msk.append(msk_array)
+                    ref_id.append(i)
+                    ref_new_obj.append(new_obj)
 
         N_ref_msk = np.array(N_ref_msk)
         info['num_objects'] = N_ref_msk.max()
         info['ref_id'] = ref_id
+        info['ref_new_obj'] = ref_new_obj
 
         Fs = torch.from_numpy(np.transpose(N_frames.copy(), (3, 0, 1, 2)).copy()).float()
         Ms = torch.from_numpy(self.All_to_onehot(N_ref_msk).copy()).float()
