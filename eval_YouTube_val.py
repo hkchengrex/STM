@@ -92,13 +92,13 @@ def Run_video(Fs, Ms, ref_id, ref_new_obj, num_objects, real_shape, Mem_every=No
 
     Es = torch.zeros((b, k, t, h, w), dtype=torch.float32, device=Ms.device)
 
-    Es[:,:,0] = Ms[:,:,0]
+    Es[:,:,ref_id[0]] = Ms[:,:,0]
     ref_step = 1
-    for t_step in range(1, t):
+    for t_step in range(ref_id[0]+1, t):
     
         # memorize previous frame
-        if t_step == 1:
-            this_keys, this_values = model(Fs[:,:,0], Es[:,:,0], torch.tensor([num_objects]))
+        if t_step == ref_id[0]+1:
+            this_keys, this_values = model(Fs[:,:,t_step-1], Es[:,:,t_step-1], torch.tensor([num_objects]))
         else:
             prev_key, prev_value = model(Fs[:,:,t_step-1], Es[:,:,t_step-1], torch.tensor([num_objects]))
             this_keys = torch.cat([keys, prev_key], dim=3)
@@ -164,7 +164,7 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
                 pred, Es = Run_video(Fs, Ms, ref_id, ref_new_obj, num_objects, real_shape, Mem_every=5, Mem_number=None)
             except Exception as e:
                 print('Mem 5 failed. ')
-                raise e
+                #raise e
                 try:
                     pred, Es = Run_video(Fs, Ms, ref_id, ref_new_obj, num_objects, real_shape, Mem_every=7, Mem_number=None)
                 except Exception:
@@ -186,7 +186,7 @@ for seq, V in progressbar(enumerate(Testloader), max_value=len(Testloader), redi
             print('Exception', e, seq_name)
             skipped.append(seq_name)
             print('Skipped: ', skipped)
-            raise e
+            #raise e
         
 
 
