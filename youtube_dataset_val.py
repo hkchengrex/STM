@@ -13,7 +13,7 @@ import glob
 class YOUTUBE_VOS_MO_Test_val(data.Dataset):
     # for multi object, do shuffling
 
-    def __init__(self, root, all_frames_root, fz_root, start_idx, end_idx):
+    def __init__(self, root, all_frames_root, fz_root, start_idx, end_idx, use_sub_val=False):
         self.root = root
         self.mask_dir = path.join(root, 'Annotations')
         self.image_dir = path.join(all_frames_root, 'JPEGImages')
@@ -25,8 +25,10 @@ class YOUTUBE_VOS_MO_Test_val(data.Dataset):
         self.frames_name = {}
 
         self_vid_list = sorted(os.listdir(self.image_dir))
-        sub_val_list = load_sub_val()
-        self_vid_list = [v for v in self_vid_list if v in sub_val_list]
+
+        if use_sub_val:
+            sub_val_list = load_sub_val()
+            self_vid_list = [v for v in self_vid_list if v in sub_val_list]
 
         print('This process handles video %d to %d out of %d' % (start_idx, end_idx-1, len(self_vid_list)))
 

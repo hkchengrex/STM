@@ -43,6 +43,7 @@ def get_arguments():
     parser.add_argument("--start", type=int, help='Start IDX  (inclusive)', default=0)
     parser.add_argument("--end", type=int, help='END IDX (inclusive)', default=0)
 
+    parser.add_argument('--use_sub_val', action='store_true')
     parser.add_argument("--extra_id", type=str, default='')
 
     return parser.parse_args()
@@ -129,7 +130,7 @@ def Run_video(Fs, Ms, ref_id, ref_new_obj, num_objects, real_shape, Mem_every=No
 
 
 
-Testset = YOUTUBE_VOS_MO_Test_val(VOS_ROOT, AF_ROOT, FZ_ROOT, start_idx=start_idx, end_idx=end_idx)
+Testset = YOUTUBE_VOS_MO_Test_val(VOS_ROOT, AF_ROOT, FZ_ROOT, start_idx=start_idx, end_idx=end_idx, use_sub_val=args.use_sub_val)
 Testloader = data.DataLoader(Testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)
 
 model = nn.DataParallel(STM())
